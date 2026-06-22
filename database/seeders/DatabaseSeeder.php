@@ -36,6 +36,10 @@ final class DatabaseSeeder extends Seeder
 
         $tags = $this->seedTags();
 
+        // The very first issue gets a deliberately large comment thread so the
+        // paginated comments endpoint (5 per page) is demonstrable immediately.
+        $firstIssueSeeded = false;
+
         foreach ($this->projectBlueprints() as $blueprint) {
             $project = Project::query()->create($blueprint);
 
@@ -43,14 +47,19 @@ final class DatabaseSeeder extends Seeder
                 ->count(fake()->numberBetween(7, 10))
                 ->for($project)
                 ->create()
-                ->each(function (Issue $issue) use ($tags): void {
+                ->each(function (Issue $issue) use ($tags, &$firstIssueSeeded): void {
                     // Each issue carries a small, random subset of the shared tags.
                     $issue->tags()->attach(
                         $tags->random(fake()->numberBetween(1, 4))->pluck('id')->all(),
                     );
 
+                    $commentCount = $firstIssueSeeded
+                        ? fake()->numberBetween(3, 6)
+                        : 12;
+                    $firstIssueSeeded = true;
+
                     Comment::factory()
-                        ->count(fake()->numberBetween(3, 6))
+                        ->count($commentCount)
                         ->for($issue)
                         ->create();
                 });
