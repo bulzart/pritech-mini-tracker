@@ -1,0 +1,505 @@
+/*
+ * Mini Issue Tracker — self-contained stylesheet.
+ *
+ * Served as a static same-origin asset (no Vite/Tailwind build step required),
+ * which keeps local setup friction low and is compatible with the strict
+ * Content-Security-Policy (style-src 'self').
+ */
+
+:root {
+    --color-bg: #f6f7f9;
+    --color-surface: #ffffff;
+    --color-border: #d8dde3;
+    --color-text: #1f2933;
+    --color-muted: #62707d;
+    --color-primary: #1d4ed8;
+    --color-primary-dark: #1e40af;
+    --color-danger: #b91c1c;
+    --color-danger-dark: #991b1b;
+    --color-success-bg: #e7f6ed;
+    --color-success-text: #11643a;
+    --color-error-bg: #fdecec;
+    --color-error-text: #971b1b;
+    --radius: 8px;
+    --shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.1);
+    --space: 1rem;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html {
+    -webkit-text-size-adjust: 100%;
+}
+
+body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--color-text);
+    background: var(--color-bg);
+    line-height: 1.55;
+}
+
+h1,
+h2,
+h3 {
+    line-height: 1.25;
+    margin: 0 0 0.5em;
+}
+
+a {
+    color: var(--color-primary);
+}
+
+a:hover {
+    color: var(--color-primary-dark);
+}
+
+/* Visible keyboard focus on every interactive element. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+    outline: 3px solid #93c5fd;
+    outline-offset: 2px;
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.skip-link {
+    position: absolute;
+    left: -999px;
+    top: 0;
+    background: var(--color-primary);
+    color: #fff;
+    padding: 0.5rem 1rem;
+    border-radius: 0 0 var(--radius) 0;
+    z-index: 100;
+}
+
+.skip-link:focus {
+    left: 0;
+    color: #fff;
+}
+
+/* Layout */
+.site-header {
+    background: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.site-nav {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 0.75rem var(--space);
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.site-nav__brand {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--color-text);
+    text-decoration: none;
+}
+
+.site-nav__links {
+    list-style: none;
+    display: flex;
+    gap: 1rem;
+    margin: 0;
+    padding: 0;
+}
+
+.site-nav__links a {
+    text-decoration: none;
+    color: var(--color-muted);
+    font-weight: 500;
+}
+
+.site-nav__links a[aria-current="page"] {
+    color: var(--color-primary);
+}
+
+.container {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 1.5rem var(--space) 3rem;
+}
+
+.page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.breadcrumb {
+    color: var(--color-muted);
+    font-size: 0.9rem;
+    margin-bottom: 0.75rem;
+}
+
+.breadcrumb a {
+    text-decoration: none;
+}
+
+/* Flash messages */
+.flash {
+    border-radius: var(--radius);
+    padding: 0.75rem 1rem;
+    margin-bottom: 1.25rem;
+    font-weight: 500;
+}
+
+.flash--success {
+    background: var(--color-success-bg);
+    color: var(--color-success-text);
+}
+
+.flash--error {
+    background: var(--color-error-bg);
+    color: var(--color-error-text);
+}
+
+/* Buttons */
+.button {
+    display: inline-block;
+    border: 1px solid transparent;
+    border-radius: var(--radius);
+    padding: 0.5rem 1rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    line-height: 1.2;
+    background: #eef1f5;
+    color: var(--color-text);
+}
+
+.button:hover {
+    background: #e2e7ee;
+    color: var(--color-text);
+}
+
+.button--primary {
+    background: var(--color-primary);
+    color: #fff;
+}
+
+.button--primary:hover {
+    background: var(--color-primary-dark);
+    color: #fff;
+}
+
+.button--danger {
+    background: var(--color-danger);
+    color: #fff;
+}
+
+.button--danger:hover {
+    background: var(--color-danger-dark);
+    color: #fff;
+}
+
+.button--ghost {
+    background: transparent;
+    border-color: var(--color-border);
+    color: var(--color-muted);
+}
+
+.button--small {
+    padding: 0.3rem 0.6rem;
+    font-size: 0.85rem;
+}
+
+.inline-form {
+    display: inline;
+}
+
+/* Cards & tables */
+.card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 1.25rem;
+    margin-bottom: 1.25rem;
+}
+
+.table-wrap {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+caption {
+    text-align: left;
+}
+
+th,
+td {
+    text-align: left;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--color-border);
+    vertical-align: top;
+}
+
+th {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--color-muted);
+}
+
+tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.muted {
+    color: var(--color-muted);
+}
+
+.numeric {
+    font-variant-numeric: tabular-nums;
+}
+
+/* Definition list on the show page */
+.detail-list {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.5rem 1.5rem;
+    margin: 0;
+}
+
+.detail-list dt {
+    color: var(--color-muted);
+    font-weight: 600;
+}
+
+.detail-list dd {
+    margin: 0;
+}
+
+/* Forms */
+.form {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 1.5rem;
+    max-width: 640px;
+}
+
+.form__group {
+    margin-bottom: 1.25rem;
+}
+
+.form__label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 0.35rem;
+}
+
+.form__required {
+    color: var(--color-danger);
+}
+
+.form__hint {
+    color: var(--color-muted);
+    font-size: 0.85rem;
+    margin: 0.25rem 0 0;
+}
+
+.form__control {
+    width: 100%;
+    padding: 0.55rem 0.7rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    font: inherit;
+    color: inherit;
+    background: #fff;
+}
+
+.form__control[aria-invalid="true"] {
+    border-color: var(--color-danger);
+}
+
+textarea.form__control {
+    min-height: 7rem;
+    resize: vertical;
+}
+
+.field-error {
+    color: var(--color-error-text);
+    font-size: 0.85rem;
+    margin: 0.35rem 0 0;
+}
+
+.form__row {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.form__row .form__group {
+    flex: 1 1 12rem;
+}
+
+.form__actions {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    margin-top: 0.5rem;
+}
+
+/* Badges */
+.badge {
+    display: inline-block;
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    line-height: 1.5;
+    white-space: nowrap;
+}
+
+.badge--status-open {
+    background: #e0edff;
+    color: #1e40af;
+}
+
+.badge--status-in_progress {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.badge--status-closed {
+    background: #e5e7eb;
+    color: #374151;
+}
+
+.badge--priority-low {
+    background: #e7f6ed;
+    color: #11643a;
+}
+
+.badge--priority-medium {
+    background: #fff7e6;
+    color: #92580e;
+}
+
+.badge--priority-high {
+    background: #fde2e2;
+    color: #991b1b;
+}
+
+/* Issue list on the show page */
+.issue-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.issue-list__item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.issue-list__item:last-child {
+    border-bottom: 0;
+}
+
+.issue-list__title {
+    font-weight: 600;
+    flex: 1 1 18rem;
+}
+
+.issue-list__meta {
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+/* Empty state */
+.empty-state {
+    text-align: center;
+    padding: 2.5rem 1rem;
+    color: var(--color-muted);
+}
+
+.empty-state h2 {
+    color: var(--color-text);
+}
+
+/* Pagination */
+.pagination {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 1.25rem;
+    justify-content: center;
+}
+
+.pagination__link {
+    padding: 0.4rem 0.9rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    text-decoration: none;
+    background: var(--color-surface);
+}
+
+.pagination__link.is-disabled {
+    color: var(--color-muted);
+    background: transparent;
+    cursor: default;
+}
+
+.pagination__status {
+    color: var(--color-muted);
+    font-size: 0.9rem;
+}
+
+@media (max-width: 600px) {
+    .detail-list {
+        grid-template-columns: 1fr;
+        gap: 0.1rem 0;
+    }
+
+    .detail-list dd {
+        margin-bottom: 0.6rem;
+    }
+}
