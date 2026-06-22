@@ -4,7 +4,6 @@ use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
-use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -19,7 +18,8 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        $exceptions->shouldRenderJsonWhen(
-            fn (Request $request) => $request->is('api/*'),
-        );
+        // Default rendering: JSON when the request expects it (the AJAX tag and
+        // comment endpoints send Accept: application/json), HTML redirects for
+        // normal form posts. Validation failures therefore return 422 JSON to
+        // fetch() and a redirect-with-errors to the server-rendered forms.
     })->create();
