@@ -43,6 +43,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Demo Mode
+    |--------------------------------------------------------------------------
+    |
+    | When enabled, the login form is prefilled with the seeded Demo Owner
+    | credentials and shows a hint, so a reviewer can sign in with a single
+    | click. It never auto-authenticates — the fields are only prefilled. Keep
+    | this off (DEMO_MODE=false) outside local/demo environments: it must not
+    | expose credentials in production.
+    |
+    */
+
+    'demo_mode' => (bool) env('DEMO_MODE', false),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application URL
     |--------------------------------------------------------------------------
     |
