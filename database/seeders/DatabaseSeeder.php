@@ -28,11 +28,11 @@ final class DatabaseSeeder extends Seeder
 
     public function run(): void
     {
-        // Convenience account kept for future authenticated features.
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        // Demo accounts (every password is "password", hashed by the User
+        // model's `password` cast — never stored in plain text). "Demo Owner"
+        // and "Demo Member" are the documented sign-in accounts; the rest exist
+        // to be assigned to issues.
+        $this->seedUsers();
 
         $tags = $this->seedTags();
 
@@ -64,6 +64,31 @@ final class DatabaseSeeder extends Seeder
                         ->create();
                 });
         }
+    }
+
+    /**
+     * Seed the demo users. Every account uses the password "password" (hashed
+     * by the User model's `password` cast — never persisted in plain text).
+     * "Demo Owner" and "Demo Member" are the documented sign-in accounts; the
+     * remaining three exist to be assigned to issues.
+     *
+     * @return array{owner: User, members: Collection<int, User>}
+     */
+    private function seedUsers(): array
+    {
+        $owner = User::factory()->create([
+            'name' => 'Demo Owner',
+            'email' => 'owner@example.com',
+        ]);
+
+        $members = collect([
+            ['name' => 'Demo Member', 'email' => 'member@example.com'],
+            ['name' => 'QA Reviewer', 'email' => 'qa@example.com'],
+            ['name' => 'Frontend Developer', 'email' => 'frontend@example.com'],
+            ['name' => 'Backend Developer', 'email' => 'backend@example.com'],
+        ])->map(static fn (array $attributes): User => User::factory()->create($attributes));
+
+        return ['owner' => $owner, 'members' => $members];
     }
 
     /**

@@ -18,26 +18,42 @@
     <header class="site-header">
         <nav class="site-nav" aria-label="Primary">
             <a class="site-nav__brand" href="{{ route('projects.index') }}">Mini Issue Tracker</a>
-            <ul class="site-nav__links">
-                <li>
-                    <a href="{{ route('projects.index') }}"
-                       @if (request()->routeIs('projects.*')) aria-current="page" @endif>
-                        Projects
+            @auth
+                <ul class="site-nav__links">
+                    <li>
+                        <a href="{{ route('projects.index') }}"
+                           @if (request()->routeIs('projects.*')) aria-current="page" @endif>
+                            Projects
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ route('issues.index') }}"
+                           @if (request()->routeIs('issues.*')) aria-current="page" @endif>
+                            Issues
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ route('tags.index') }}"
+                           @if (request()->routeIs('tags.*')) aria-current="page" @endif>
+                            Tags
+                        </a>
+                    </li>
+                </ul>
+                <div class="site-nav__auth">
+                    <span class="site-nav__user">{{ auth()->user()->name }}</span>
+                    <form method="POST" action="{{ route('logout') }}" class="inline-form">
+                        @csrf
+                        <button type="submit" class="button button--ghost button--small">Log out</button>
+                    </form>
+                </div>
+            @else
+                <div class="site-nav__auth">
+                    <a class="button button--ghost button--small" href="{{ route('login') }}"
+                       @if (request()->routeIs('login')) aria-current="page" @endif>
+                        Sign in
                     </a>
-                </li>
-                <li>
-                    <a href="{{ route('issues.index') }}"
-                       @if (request()->routeIs('issues.*')) aria-current="page" @endif>
-                        Issues
-                    </a>
-                </li>
-                <li>
-                    <a href="{{ route('tags.index') }}"
-                       @if (request()->routeIs('tags.*')) aria-current="page" @endif>
-                        Tags
-                    </a>
-                </li>
-            </ul>
+                </div>
+            @endauth
         </nav>
     </header>
 

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\IssueCommentController;
 use App\Http\Controllers\IssueController;
 use App\Http\Controllers\IssueTagController;
@@ -11,6 +12,14 @@ use Illuminate\Support\Facades\Route;
 
 // The application opens on the project list.
 Route::get('/', static fn () => redirect()->route('projects.index'));
+
+// Authentication (hand-rolled session auth — see CHECKPOINT.md for why Breeze
+// is not used). The login form is server-rendered; logout is a POST so it
+// carries a CSRF token and cannot be triggered cross-site. Throttling and
+// enumeration-resistant errors live in App\Http\Requests\Auth\LoginRequest.
+Route::get('login', [AuthenticatedSessionController::class, 'create'])->name('login');
+Route::post('login', [AuthenticatedSessionController::class, 'store'])->name('login.store');
+Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
 
 // Full CRUD for projects via a resource controller (index/create/store/show/
 // edit/update/destroy) with implicit route-model binding.
