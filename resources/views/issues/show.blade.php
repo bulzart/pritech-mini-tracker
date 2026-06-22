@@ -96,16 +96,16 @@
                 <label class="form__label" for="author_name">
                     Your name <span class="form__required" aria-hidden="true">*</span>
                 </label>
-                <input type="text" id="author_name" name="author_name" class="form__control" maxlength="255" required>
-                <p class="field-error" data-error-for="author_name" role="alert" hidden></p>
+                <input type="text" id="author_name" name="author_name" class="form__control" maxlength="255" required aria-describedby="author_name-error">
+                <p class="field-error" id="author_name-error" data-error-for="author_name" role="alert" hidden></p>
             </div>
 
             <div class="form__group">
                 <label class="form__label" for="body">
                     Comment <span class="form__required" aria-hidden="true">*</span>
                 </label>
-                <textarea id="body" name="body" class="form__control" maxlength="5000" required></textarea>
-                <p class="field-error" data-error-for="body" role="alert" hidden></p>
+                <textarea id="body" name="body" class="form__control" maxlength="5000" required aria-describedby="body-error"></textarea>
+                <p class="field-error" id="body-error" data-error-for="body" role="alert" hidden></p>
             </div>
 
             <p class="field-error" data-comment-form-error role="alert" hidden></p>

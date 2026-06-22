@@ -311,6 +311,11 @@
             section.querySelectorAll("[data-error-for]").forEach(function (element) {
                 setText(element, "");
                 hide(element);
+
+                var input = section.querySelector("#" + element.getAttribute("data-error-for"));
+                if (input) {
+                    input.removeAttribute("aria-invalid");
+                }
             });
             hide(formError);
         }
@@ -321,6 +326,14 @@
                 if (element) {
                     setText(element, errors[field][0]);
                     show(element);
+                }
+
+                // Programmatically tie the message to its input (WCAG 3.3.1 /
+                // accessibility skill: error states must be determinable, not
+                // colour/role-alert alone).
+                var input = section.querySelector("#" + field);
+                if (input) {
+                    input.setAttribute("aria-invalid", "true");
                 }
             });
         }
