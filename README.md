@@ -2,11 +2,22 @@
 
 A small Laravel application for a team to manage **projects**, **issues**, **tags**, and **comments**.
 
-This repository is built in checkpoints. The current checkpoint delivers the
-database schema, Eloquent models and relationships, demo data, and full
-**Project CRUD** with server-rendered Blade views and Form Request validation.
-See [`CHECKPOINT.md`](CHECKPOINT.md) for the detailed status and what is
-intentionally not built yet.
+This repository is built in checkpoints. It currently delivers the database
+schema, Eloquent models and relationships, demo data, and:
+
+- **Project CRUD** — server-rendered Blade views with Form Request validation.
+- **Issue CRUD** — with status / priority / tag filtering (combinable, preserved
+  across pagination) and a detail page.
+- **Tags** — listing with per-tag issue counts, and creation with unique-name
+  validation.
+- **AJAX tag attach/detach** on the issue detail page — `fetch()`, JSON, no
+  full-page reload.
+- **AJAX comments** — paginated loading and creation on the issue detail page,
+  with inline validation; new comments are prepended without a reload.
+
+The front end is progressive-enhancement JavaScript (no SPA framework) over
+server-rendered Blade. See [`CHECKPOINT.md`](CHECKPOINT.md) for the detailed
+status, route map, JSON response shapes, and what is intentionally not built yet.
 
 ## Domain model
 

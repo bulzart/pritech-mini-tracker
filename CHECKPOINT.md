@@ -3,6 +3,13 @@
 Status: **complete and working**. The application boots, seeds demo data, and
 serves full Project CRUD in the browser with no console errors.
 
+> **Checkpoint 2 is now complete** — Issue CRUD, status/priority/tag filters,
+> Tag listing & creation, AJAX tag attach/detach, and AJAX paginated comments.
+> See **[Checkpoint 2](#checkpoint-2--issues-filters-tags-ajax-tags--comments)**
+> at the end of this document. The Checkpoint 1 "known limitations / next
+> checkpoint" notes below are retained as a historical record; the Checkpoint 2
+> section supersedes them.
+
 ## Environment
 
 | Item             | Value                                                              |
@@ -162,3 +169,258 @@ Security response headers confirmed present on web responses: `Content-Security-
 - AJAX comments on the issue show page.
 - Optional: issue list filtering using the existing `status`/`priority`/`tag`
   scopes; optional user assignment; optional authorization with policies.
+
+---
+
+# Checkpoint 2 — Issues, Filters, Tags, AJAX Tags & Comments
+
+Status: **complete and working**. All required core assignment features are now
+implemented: Issue CRUD, filtering, Tag listing/creation, AJAX tag
+attach/detach, and AJAX paginated comments. `php artisan test` is green,
+Playwright MCP and HTTP verification pass, and the browser console is clean.
+
+## Routes added
+
+### Issues — full resource (`Route::resource('issues', IssueController::class)`)
+
+```
+GET    /issues                 issues.index    (filterable + paginated)
+GET    /issues/create          issues.create   (?project_id preselects a project)
+POST   /issues                 issues.store
+GET    /issues/{issue}         issues.show
+GET    /issues/{issue}/edit    issues.edit
+PUT/PATCH /issues/{issue}      issues.update
+DELETE /issues/{issue}         issues.destroy
+```
+
+### Tags — list & create only (`->only(['index', 'create', 'store'])`)
+
+```
+GET    /tags                   tags.index      (withCount('issues'), paginated)
+GET    /tags/create            tags.create
+POST   /tags                   tags.store
+```
+
+### AJAX endpoints (JSON, consumed by fetch() with no full-page reload)
+
+```
+POST   /issues/{issue}/tags/{tag}     issues.tags.attach     (idempotent)
+DELETE /issues/{issue}/tags/{tag}     issues.tags.detach     (idempotent)
+GET    /issues/{issue}/comments       issues.comments.index  (paginated, newest first)
+POST   /issues/{issue}/comments       issues.comments.store  (201 on success)
+```
+
+All use implicit route-model binding, so an unknown `{issue}` or `{tag}`
+returns a 404 automatically.
+
+## JSON response shapes
+
+**Tag attach** — `POST /issues/{issue}/tags/{tag}` → `200`
+
+```json
+{ "attached": true, "tag": { "id": 1, "name": "backend", "color": "#2563eb" }, "message": "Tag attached." }
+```
+
+**Tag detach** — `DELETE /issues/{issue}/tags/{tag}` → `200`
+
+```json
+{ "attached": false, "tag": { "id": 1, "name": "backend", "color": "#2563eb" }, "message": "Tag detached." }
+```
+
+Both are idempotent: re-attaching never creates a duplicate pivot row
+(`syncWithoutDetaching` + the unique `issue_tag(issue_id, tag_id)` index), and
+detaching a tag that is not attached is a clean no-op.
+
+**Comments list** — `GET /issues/{issue}/comments?page=N` → `200` (Laravel
+resource collection of `CommentResource` over a paginator):
+
+```json
+{
+  "data": [
+    { "id": 1, "author_name": "Grace Hopper", "body": "…", "created_at": "2026-06-22T18:00:00+00:00", "created_at_for_humans": "5 minutes ago" }
+  ],
+  "links": { "first": "…", "last": "…", "prev": null, "next": "…" },
+  "meta": { "current_page": 1, "last_page": 3, "per_page": 5, "total": 12, "from": 1, "to": 5, "path": "…" }
+}
+```
+
+**Comment create** — `POST /issues/{issue}/comments` → `201`
+
+```json
+{ "data": { "id": 248, "author_name": "Grace Hopper", "body": "…", "created_at": "…", "created_at_for_humans": "0 seconds ago" } }
+```
+
+**Comment validation error** → `422` (Laravel standard JSON):
+
+```json
+{ "message": "The name field is required. (and 1 more error)", "errors": { "author_name": ["The name field is required."], "body": ["The body field is required."] } }
+```
+
+## Filters implemented
+
+- `?status=open|in_progress|closed`, `?priority=low|medium|high`, `?tag={name}`,
+  driven by the existing `Issue::scopeStatus/scopePriority/scopeTag`.
+- Filters work independently and in any combination.
+- Empty filters (`value=""`) show all issues; an invalid value (e.g.
+  `?status=banana`) returns an empty result set without crashing.
+- The tag filter matches by tag **name** via `whereHas`.
+- Selected filters stay selected in the filter bar (a "Clear" link appears when
+  any filter is active).
+
+## Pagination behaviour
+
+- Issues index: **15 per page**, query string preserved across pages
+  (`->withQueryString()`), so the Next/Previous links keep the active filters.
+- Tags index: **20 per page**.
+- Comments: **5 per page**, paginated through the AJAX endpoint (never all at
+  once). The Previous/Next controls fetch the adjacent page in place. The first
+  seeded issue is given 12 comments so 3 pages are demonstrable immediately.
+
+## Eager loading / N+1 avoidance
+
+- Issue index: `with(['project', 'tags'])`.
+- Issue show: `load(['project', 'tags'])`; comments load through the paginated
+  endpoint, not eagerly.
+- Tag index: `withCount('issues')`.
+
+## JavaScript files & Blade partials added
+
+JavaScript (static, same-origin, CSP-safe — `script-src 'self'`, no inline
+handlers, no `console.log`):
+
+- `public/js/app.js` — extended: delete-confirm (existing) + tag colour dots
+  painted via the **CSSOM** (`element.style`, which is not subject to the
+  `style-src` CSP directive, so the strict policy holds with no console errors).
+- `public/js/issue-show.js` — new: AJAX tag attach/detach and the paginated
+  comments thread + comment creation. Comment author/body are rendered with
+  `textContent` (never `innerHTML`) so stored values cannot inject markup
+  (OWASP A03/XSS). Disables buttons while a request is in flight and guards
+  against duplicate submits. A client-side required-field check shows inline
+  errors for empty input without a needless 422 round-trip; the server remains
+  the source of truth.
+
+Blade partials/views added:
+
+- `issues/{index,create,edit,show,_form,_filters,_status_badge,_priority_badge,_tag_item}.blade.php`
+- `tags/{index,create,_form}.blade.php`
+- `partials/tag-chip.blade.php`
+- Layout nav extended to **Projects · Issues · Tags**; a `@stack('scripts')`
+  hook loads the page-specific `issue-show.js`.
+- `projects/show.blade.php` updated: issue titles now link to the issue detail
+  page, and a "New issue" link carries `?project_id={id}` to preselect the
+  project.
+
+## Forms & validation (Form Request classes)
+
+- `StoreIssueRequest` / `UpdateIssueRequest`: `project_id` required + `exists`,
+  `title` required/string/max:255, `description` nullable, `status`/`priority`
+  constrained to `Issue::STATUSES` / `Issue::PRIORITIES`, `due_date` nullable date.
+- `StoreTagRequest`: `name` required/string/max:255/unique, `color` nullable/max:50.
+- `StoreCommentRequest`: `author_name` required/max:255, `body` required/max:5000.
+
+## Schema change
+
+- Added migration `2026_06_22_100007_make_issues_description_nullable` — the
+  Checkpoint 1 schema declared `issues.description` NOT NULL, which conflicted
+  with the new "description nullable" requirement (creating an issue without a
+  description failed at the DB layer). The column is now nullable, matching the
+  validation contract. Done as a separate additive migration, consistent with
+  how the project dates were added.
+
+## Tests run
+
+`php artisan test` → **82 passed (211 assertions)**, ~1s. (33 from Checkpoint 1
+plus 49 new methods covering the 50 enumerated cases — three POST-comment
+assertions are grouped into one method — and one regression guard for the
+nullable-description fix.)
+
+New suites:
+- `Tests\Feature\Issues\IssueCrudTest` — index/create/show/edit/update/delete,
+  project-dropdown, query-string preselect, validation failures (project,
+  status, priority, title), nullable description, project→issue links.
+- `Tests\Feature\Issues\IssueFilterTest` — status, priority, tag, combined
+  filters, and filter-preserving pagination.
+- `Tests\Feature\Tags\TagTest` — index, create, duplicate-name failure, nullable
+  colour, issue counts.
+- `Tests\Feature\Issues\IssueTagApiTest` — attach/detach JSON, idempotent
+  attach (no duplicate pivot), safe missing-detach, 404 for unknown issue/tag.
+- `Tests\Feature\Issues\IssueCommentApiTest` — JSON list, pagination, newest
+  first, 201 create, correct issue association, 422 validation JSON, page 2.
+
+`vendor/bin/pint --test` → **passed**.
+
+## Playwright MCP verification (real browser, dev server)
+
+All flows passed against `php artisan serve`, **0 console errors** in the final
+state:
+
+- **Issue list** loads; rows show title, project, status, priority, due date,
+  tags, and View/Edit/Delete actions; pagination "Page 1 of 4".
+- **Filters**: selected status=open + priority=high → every visible row matched;
+  both selects stayed selected; a "Clear" link appeared.
+- **Project integration**: issue titles on a project page link to the issue
+  detail; "New issue" links to `/issues/create?project_id=2`, which preselects
+  "Mobile App v2".
+- **Create**: empty title → inline error + preserved input; a valid issue (no
+  description) created and redirected to its detail page.
+- **Edit**: form pre-filled; changing status→closed and priority→high persisted.
+- **Delete**: JS confirm dialog (with the issue title) → redirect to the list,
+  issue gone, "Issue deleted." flash.
+- **AJAX tags**: attaching "backend" moved it to *Attached* with a Detach button
+  and no reload; detaching moved it back to *Available* — URL never changed.
+- **AJAX comments**: loaded automatically (5/page, "Page 1 of 3"); Next advanced
+  to page 2 in place; a valid comment prepended to the list, cleared the form,
+  and showed "Comment added."; an empty submission showed inline field errors
+  with no failed request.
+- **Tags**: index shows chips, colours, and per-tag issue counts; a new tag was
+  created ("Tag created." flash); a duplicate name showed the inline error
+  "The name has already been taken." with input preserved.
+
+## API / HTTP verification (curl against the dev server)
+
+| Request | Result |
+| ------- | ------ |
+| `GET /issues` (+ `?status` / `?priority` / `?tag` / combined / invalid) | 200 |
+| `GET /issues/create` (+ `?project_id`) | 200 |
+| `POST /issues` (valid, no description, CSRF) | 302 → show; row created |
+| `GET /issues/{id}` · `GET /issues/{id}/edit` | 200 |
+| `PATCH /issues/{id}` | 302 |
+| `POST /issues` (invalid) | 302 back; no row created |
+| `DELETE /issues/{id}` | 302; row gone |
+| `GET /tags` · `GET /tags/create` | 200 |
+| `POST /tags` (valid) | 302; row created |
+| `POST /tags` (duplicate) | 302 back; validation error |
+| `POST /issues/{issue}/tags/{tag}` (attach, ×2) | 200 JSON; one pivot row |
+| `DELETE /issues/{issue}/tags/{tag}` (detach) | 200 JSON |
+| `POST /issues/999999/tags/{tag}` (unknown issue) | 404 |
+| `GET /issues/{issue}/comments` · `?page=2` | 200 JSON (`data`+`links`+`meta`) |
+| `POST /issues/{issue}/comments` (valid) | 201 JSON (`data`) |
+| `POST /issues/{issue}/comments` (invalid) | 422 JSON (`errors`) |
+| `POST /issues` (no CSRF token) | 419 |
+
+The error log was empty across the run.
+
+## Known limitations (by design for this checkpoint)
+
+- **No authentication or authorization.** Form Request `authorize()` returns
+  `true`; the AJAX tag and comment endpoints accept any caller. Adding ownership
+  checks / policies is the documented next step. Comment `author_name` is a free
+  field (no identity binding yet).
+- The browser logs `Failed to load resource: …422` for any AJAX request that
+  legitimately returns 422. The comment form's client-side required-field check
+  avoids this for the common empty-form case; a 422 from a server-only rule
+  (e.g. an over-long body) would still produce that benign network log. It is
+  not a JavaScript error and the response is handled inline.
+- Comment colours/threading, editing/deleting comments, and editing tags are out
+  of scope.
+- Pagination controls remain simple prev/next (no numbered pages).
+- The AJAX endpoints live on `web` routes (session + CSRF) rather than a
+  versioned `/api` surface; there is no rate limiting yet.
+
+## Next checkpoint notes
+
+- Authentication + authorization (policies) for issues, tags, comments, and the
+  AJAX endpoints; bind `author_name` to the signed-in user.
+- Optional user assignment on issues; comment edit/delete; tag editing.
+- Consider a versioned `/api/v1` surface with rate limiting for the JSON
+  endpoints if they are to be consumed beyond the issue detail page.
