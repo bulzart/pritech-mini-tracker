@@ -67,6 +67,18 @@ final class Issue extends Model
     }
 
     /**
+     * Users assigned to work on this issue (many-to-many via issue_user). The
+     * unique (issue_id, user_id) index makes attaching idempotent at the DB
+     * layer.
+     *
+     * @return BelongsToMany<User, $this>
+     */
+    public function assignees(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'issue_user');
+    }
+
+    /**
      * Filter by status. A null/empty value is a no-op so the scope can be
      * driven directly by optional request input.
      */
@@ -97,6 +109,27 @@ final class Issue extends Model
             fn (Builder $query): Builder => $query->whereHas(
                 'tags',
                 fn (Builder $tags): Builder => $tags->where('name', $tag),
+            ),
+        );
+    }
+
+    /**
+     * Text search across title and description. A null/empty term is a no-op so
+     * the scope can be driven directly by optional request input.
+     *
+     * The title/description OR is wrapped in its own group so it composes
+     * correctly (as a single AND term) with the status/priority/tag scopes. The
+     * term is bound as a parameter (LIKE ?) — the % wraps the bound value, not
+     * the SQL — so it is not an injection vector (CWE-89).
+     */
+    public function scopeSearch(Builder $query, ?string $term): Builder
+    {
+        return $query->when(
+            filled($term),
+            fn (Builder $query): Builder => $query->where(
+                fn (Builder $inner): Builder => $inner
+                    ->where('title', 'like', '%'.$term.'%')
+                    ->orWhere('description', 'like', '%'.$term.'%'),
             ),
         );
     }
