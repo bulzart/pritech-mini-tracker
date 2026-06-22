@@ -29,6 +29,16 @@
     box-sizing: border-box;
 }
 
+/*
+ * Guarantee the [hidden] attribute always wins. Author display rules such as
+ * `.pagination { display: flex }` otherwise override the user-agent
+ * `[hidden] { display: none }`, leaving JS-toggled regions (e.g. the comments
+ * pagination) visible when they should be hidden.
+ */
+[hidden] {
+    display: none !important;
+}
+
 html {
     -webkit-text-size-adjust: 100%;
 }
@@ -493,6 +503,173 @@ textarea.form__control {
     font-size: 0.9rem;
 }
 
+/* Issue filter bar */
+.filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 1rem;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.25rem;
+}
+
+.filters__group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    flex: 1 1 10rem;
+}
+
+.filters__label {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--color-muted);
+}
+
+.filters__actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+/* Tag chips */
+.tag-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.1rem 0.5rem;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    background: #f4f6f9;
+    white-space: nowrap;
+}
+
+.tag-chip__dot,
+.color-swatch {
+    display: inline-block;
+    width: 0.7rem;
+    height: 0.7rem;
+    border-radius: 50%;
+    /* Fallback when JS has not painted the colour (data-tag-color via CSSOM). */
+    background: var(--color-border);
+    flex: none;
+}
+
+.color-swatch {
+    vertical-align: middle;
+    margin-right: 0.35rem;
+}
+
+/* Tag attach/detach manager on the issue detail page */
+.tag-manager {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+
+.tag-manager__title {
+    font-size: 0.95rem;
+    margin-bottom: 0.5rem;
+}
+
+.tag-manager__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.tag-manager__item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+/* Comments thread */
+.comments {
+    margin-top: 1.25rem;
+}
+
+.comments__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+}
+
+.comments__item {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    padding: 0.75rem 1rem;
+    background: #fbfcfe;
+}
+
+.comments__meta {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.25rem;
+}
+
+.comments__author {
+    font-weight: 700;
+}
+
+.comments__time {
+    color: var(--color-muted);
+    font-size: 0.8rem;
+}
+
+.comments__body {
+    margin: 0;
+    white-space: pre-line;
+}
+
+.comments__loading,
+.comments__empty {
+    margin: 0.5rem 0;
+}
+
+/* Comment form sits inside the comments card, so drop the standalone box. */
+.form--inline-card {
+    border: 0;
+    box-shadow: none;
+    padding: 0;
+    background: transparent;
+    max-width: none;
+    margin-bottom: 1.5rem;
+}
+
+/* Pagination as buttons (comments) reuses the link styling. */
+button.pagination__link {
+    font: inherit;
+    cursor: pointer;
+}
+
+.pagination__link:disabled {
+    color: var(--color-muted);
+    background: transparent;
+    cursor: default;
+}
+
+/* Long-form text */
+.prose {
+    margin: 0;
+    white-space: pre-line;
+}
+
 @media (max-width: 600px) {
     .detail-list {
         grid-template-columns: 1fr;
@@ -501,5 +678,9 @@ textarea.form__control {
 
     .detail-list dd {
         margin-bottom: 0.6rem;
+    }
+
+    .tag-manager {
+        grid-template-columns: 1fr;
     }
 }

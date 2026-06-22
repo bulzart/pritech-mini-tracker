@@ -47,26 +47,29 @@
         </dl>
     </div>
 
-    <h2>Issues ({{ $project->issues->count() }})</h2>
+    <div class="page-header">
+        <h2>Issues ({{ $project->issues->count() }})</h2>
+        <a class="button button--primary" href="{{ route('issues.create', ['project_id' => $project->id]) }}">
+            New issue
+        </a>
+    </div>
 
     @if ($project->issues->isEmpty())
         <div class="card empty-state">
             <p>This project has no issues yet.</p>
+            <a class="button button--primary" href="{{ route('issues.create', ['project_id' => $project->id]) }}">
+                Create the first issue
+            </a>
         </div>
     @else
         <div class="card">
             <ul class="issue-list">
                 @foreach ($project->issues as $issue)
                     <li class="issue-list__item">
-                        {{-- Plain text: the issue show route does not exist in this checkpoint. --}}
-                        <span class="issue-list__title">{{ $issue->title }}</span>
+                        <a class="issue-list__title" href="{{ route('issues.show', $issue) }}">{{ $issue->title }}</a>
                         <span class="issue-list__meta">
-                            <span class="badge badge--status-{{ $issue->status }}">
-                                {{ str_replace('_', ' ', $issue->status) }}
-                            </span>
-                            <span class="badge badge--priority-{{ $issue->priority }}">
-                                {{ $issue->priority }}
-                            </span>
+                            @include('issues._status_badge', ['status' => $issue->status])
+                            @include('issues._priority_badge', ['priority' => $issue->priority])
                             @if ($issue->due_date)
                                 <span class="muted">due {{ $issue->due_date->format('M j, Y') }}</span>
                             @endif

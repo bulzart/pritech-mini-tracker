@@ -25,6 +25,18 @@
                         Projects
                     </a>
                 </li>
+                <li>
+                    <a href="{{ route('issues.index') }}"
+                       @if (request()->routeIs('issues.*')) aria-current="page" @endif>
+                        Issues
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ route('tags.index') }}"
+                       @if (request()->routeIs('tags.*')) aria-current="page" @endif>
+                        Tags
+                    </a>
+                </li>
             </ul>
         </nav>
     </header>
@@ -36,5 +48,6 @@
     </main>
 
     <script src="{{ asset('js/app.js') }}" defer></script>
+    @stack('scripts')
 </body>
 </html>
