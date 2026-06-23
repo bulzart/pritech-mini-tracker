@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Database\Factories;
 
 use App\Models\Project;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -51,6 +52,9 @@ final class ProjectFactory extends Factory
             : null;
 
         return [
+            // Each project gets its own owner by default; tests that need a
+            // specific owner pass ->for($user) or ['user_id' => $user->id].
+            'user_id' => User::factory(),
             'name' => $this->faker->randomElement(self::PROJECT_NAMES),
             'description' => $this->faker->boolean(85) ? $this->faker->paragraph() : null,
             'start_date' => $startDate,

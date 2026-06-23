@@ -5,14 +5,18 @@
 @section('content')
     <div class="page-header">
         <h1>Projects</h1>
-        <a href="{{ route('projects.create') }}" class="button button--primary">New project</a>
+        @can('create', App\Models\Project::class)
+            <a href="{{ route('projects.create') }}" class="button button--primary">New project</a>
+        @endcan
     </div>
 
     @if ($projects->isEmpty())
         <div class="card empty-state">
             <h2>No projects yet</h2>
             <p>Create your first project to start tracking issues.</p>
-            <a href="{{ route('projects.create') }}" class="button button--primary">New project</a>
+            @can('create', App\Models\Project::class)
+                <a href="{{ route('projects.create') }}" class="button button--primary">New project</a>
+            @endcan
         </div>
     @else
         <div class="table-wrap">
@@ -21,6 +25,7 @@
                 <thead>
                     <tr>
                         <th scope="col">Name</th>
+                        <th scope="col">Owner</th>
                         <th scope="col">Description</th>
                         <th scope="col">Start date</th>
                         <th scope="col">Deadline</th>
@@ -34,6 +39,7 @@
                             <th scope="row">
                                 <a href="{{ route('projects.show', $project) }}">{{ $project->name }}</a>
                             </th>
+                            <td>{{ $project->owner->name }}</td>
                             <td>
                                 @if (filled($project->description))
                                     {{ str($project->description)->limit(80) }}
@@ -47,17 +53,21 @@
                             <td>
                                 <div class="actions">
                                     <a class="button button--small" href="{{ route('projects.show', $project) }}">View</a>
-                                    <a class="button button--small" href="{{ route('projects.edit', $project) }}">Edit</a>
-                                    <form
-                                        method="POST"
-                                        action="{{ route('projects.destroy', $project) }}"
-                                        class="inline-form"
-                                        data-confirm="Delete &quot;{{ $project->name }}&quot; and all of its issues? This cannot be undone."
-                                    >
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="button button--danger button--small">Delete</button>
-                                    </form>
+                                    @can('update', $project)
+                                        <a class="button button--small" href="{{ route('projects.edit', $project) }}">Edit</a>
+                                    @endcan
+                                    @can('delete', $project)
+                                        <form
+                                            method="POST"
+                                            action="{{ route('projects.destroy', $project) }}"
+                                            class="inline-form"
+                                            data-confirm="Delete &quot;{{ $project->name }}&quot; and all of its issues? This cannot be undone."
+                                        >
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="button button--danger button--small">Delete</button>
+                                        </form>
+                                    @endcan
                                 </div>
                             </td>
                         </tr>

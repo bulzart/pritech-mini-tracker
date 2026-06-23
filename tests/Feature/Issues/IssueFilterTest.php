@@ -7,12 +7,22 @@ namespace Tests\Feature\Issues;
 use App\Models\Issue;
 use App\Models\Project;
 use App\Models\Tag;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 final class IssueFilterTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Every application route now requires authentication; sign in a user so
+        // these feature tests exercise the routes as an authenticated request.
+        $this->actingAs(User::factory()->create());
+    }
 
     /** #18 */
     public function test_status_filter_works(): void

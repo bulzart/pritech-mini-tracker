@@ -7,12 +7,22 @@ namespace Tests\Feature\Issues;
 use App\Models\Comment;
 use App\Models\Issue;
 use App\Models\Project;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 final class IssueCommentApiTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Every application route now requires authentication; sign in a user so
+        // these feature tests exercise the routes as an authenticated request.
+        $this->actingAs(User::factory()->create());
+    }
 
     private function issue(): Issue
     {

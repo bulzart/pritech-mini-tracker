@@ -7,12 +7,22 @@ namespace Tests\Feature\Issues;
 use App\Models\Issue;
 use App\Models\Project;
 use App\Models\Tag;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 final class IssueCrudTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Every application route now requires authentication; sign in a user so
+        // these feature tests exercise the routes as an authenticated request.
+        $this->actingAs(User::factory()->create());
+    }
 
     /** #1 */
     public function test_issues_index_returns_ok(): void

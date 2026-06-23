@@ -6,7 +6,6 @@ namespace Database\Seeders;
 
 use App\Models\Comment;
 use App\Models\Issue;
-use App\Models\Project;
 use App\Models\Tag;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
@@ -32,7 +31,8 @@ final class DatabaseSeeder extends Seeder
         // model's `password` cast — never stored in plain text). "Demo Owner"
         // and "Demo Member" are the documented sign-in accounts; the rest exist
         // to be assigned to issues.
-        $this->seedUsers();
+        $users = $this->seedUsers();
+        $owner = $users['owner'];
 
         $tags = $this->seedTags();
 
@@ -41,7 +41,11 @@ final class DatabaseSeeder extends Seeder
         $firstIssueSeeded = false;
 
         foreach ($this->projectBlueprints() as $blueprint) {
-            $project = Project::query()->create($blueprint);
+            // The demo projects belong to Demo Owner, so the ownership rules are
+            // visible immediately: Demo Owner can edit/delete them and the other
+            // demo users cannot. Created through the relationship so user_id is
+            // set without being mass-assignable.
+            $project = $owner->projects()->create($blueprint);
 
             Issue::factory()
                 ->count(fake()->numberBetween(7, 10))

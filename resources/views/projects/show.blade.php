@@ -10,23 +10,32 @@
 
     <div class="page-header">
         <h1>{{ $project->name }}</h1>
-        <div class="actions">
-            <a class="button" href="{{ route('projects.edit', $project) }}">Edit</a>
-            <form
-                method="POST"
-                action="{{ route('projects.destroy', $project) }}"
-                class="inline-form"
-                data-confirm="Delete &quot;{{ $project->name }}&quot; and all of its issues? This cannot be undone."
-            >
-                @csrf
-                @method('DELETE')
-                <button type="submit" class="button button--danger">Delete</button>
-            </form>
-        </div>
+        @canany(['update', 'delete'], $project)
+            <div class="actions">
+                @can('update', $project)
+                    <a class="button" href="{{ route('projects.edit', $project) }}">Edit</a>
+                @endcan
+                @can('delete', $project)
+                    <form
+                        method="POST"
+                        action="{{ route('projects.destroy', $project) }}"
+                        class="inline-form"
+                        data-confirm="Delete &quot;{{ $project->name }}&quot; and all of its issues? This cannot be undone."
+                    >
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="button button--danger">Delete</button>
+                    </form>
+                @endcan
+            </div>
+        @endcanany
     </div>
 
     <div class="card">
         <dl class="detail-list">
+            <dt>Owner</dt>
+            <dd>{{ $project->owner->name }}</dd>
+
             <dt>Description</dt>
             <dd>
                 @if (filled($project->description))
