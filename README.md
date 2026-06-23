@@ -1,16 +1,11 @@
-# Mini Issue Tracker
-
-A small Laravel app for managing projects, issues, tags, and comments — with
-authentication, per-project ownership, user assignment, and AJAX search and
-filtering.
-
 ## Run it
 
 Requires **PHP 8.3+**, **Composer**, and **pdo_sqlite** — no database server,
 no Node.
-
+```bash
 1. `composer install`
 2. `composer start` (creates the SQLite database, runs `php artisan db:seed`, and finally runs `php artisan serve` in the background)
+```
 
 When the server prints the URL, open **http://127.0.0.1:8000** and click
 **Sign in**; the demo login is prefilled. Every demo account uses the password
