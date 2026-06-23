@@ -3,12 +3,14 @@
 Status: **complete and working**. The application boots, seeds demo data, and
 serves full Project CRUD in the browser with no console errors.
 
-> **Checkpoint 2 is now complete** — Issue CRUD, status/priority/tag filters,
-> Tag listing & creation, AJAX tag attach/detach, and AJAX paginated comments.
-> See **[Checkpoint 2](#checkpoint-2--issues-filters-tags-ajax-tags--comments)**
-> at the end of this document. The Checkpoint 1 "known limitations / next
-> checkpoint" notes below are retained as a historical record; the Checkpoint 2
-> section supersedes them.
+> **Checkpoint 3 is now complete** — authentication, project ownership with
+> policies, many-to-many user assignment on issues (AJAX), debounced AJAX
+> search, demo-mode login prefill, and a self-provisioning setup so the app
+> runs from a fresh checkout with no manual database steps. See
+> **[Checkpoint 3](#checkpoint-3--authentication-ownership-assignment--search)**
+> at the end of this document. The earlier "known limitations / next checkpoint"
+> notes are retained as a historical record; the latest checkpoint supersedes
+> them.
 
 ## Environment
 
@@ -424,3 +426,226 @@ The error log was empty across the run.
 - Optional user assignment on issues; comment edit/delete; tag editing.
 - Consider a versioned `/api/v1` surface with rate limiting for the JSON
   endpoints if they are to be consumed beyond the issue detail page.
+
+---
+
+# Checkpoint 3 — Authentication, Ownership, Assignment & Search
+
+Status: **complete and working**. All of the assignment's bonus features are
+implemented: authentication with seeded demo users, project ownership enforced
+by a policy, many-to-many user assignment on issues over AJAX, debounced AJAX
+search, and a demo-mode login prefill. `php artisan test` is green (127), Pint
+passes, and both Playwright (real browser) and live HTTP verification pass with
+a clean console. The app also self-provisions, so a non-developer can run it
+without manual database steps.
+
+## Authentication approach
+
+Hand-rolled session auth (Laravel's `Auth` facade + the `web` session guard),
+**not** Breeze. Breeze would pull in a Vite/Tailwind/Alpine build pipeline,
+which breaks this project's deliberate no-build, static-asset design (the app
+runs with `php artisan serve` and no `npm`). The hand-rolled controller keeps
+that design and applies the auth controls directly:
+
+- `AuthenticatedSessionController` — `create` (login form), `store` (attempt +
+  `session()->regenerate()`), `destroy` (logout + `invalidate()` +
+  `regenerateToken()`). Session-id rotation on login and full invalidation on
+  logout defend against session fixation (OWASP Session Management).
+- `App\Http\Requests\Auth\LoginRequest` — validates, throttles brute force per
+  email + IP (5 attempts, OWASP "Blocking Brute Force Attacks"), and returns one
+  generic "These credentials do not match our records." message for both a wrong
+  password and an unknown account (enumeration prevention, NIST SP 800-63B-4).
+- Registration is disabled — the seeded demo users are the way in.
+- Routes: `GET /login` (`login`), `POST /login` (`login.store`), `POST /logout`
+  (`logout`). A successful login redirects to `/projects`; the `auth` middleware
+  redirects guests to `/login` and returns 401 to the JSON endpoints.
+
+## Demo users seeded
+
+Five accounts, all with the password `password` (hashed by the `User` model's
+`password` cast — never stored in plain text):
+
+| Name | Email | Role in the demo |
+| ---- | ----- | ---------------- |
+| Demo Owner | owner@example.com | Owns every seeded project |
+| Demo Member | member@example.com | A non-owner — cannot edit others' projects |
+| QA Reviewer | qa@example.com | Assignable to issues |
+| Frontend Developer | frontend@example.com | Assignable to issues |
+| Backend Developer | backend@example.com | Assignable to issues |
+
+## Project ownership behaviour
+
+- Migration `2026_06_22_100009_add_user_id_to_projects_table` adds `user_id` as
+  a foreign key with **cascade on delete** — a user's projects are removed with
+  the user. That is the least-surprising rule for a demo where a user owns their
+  projects outright; a production system would reassign or soft-delete instead.
+  The column is NOT NULL, added while the table is empty under `migrate:fresh`.
+- `Project::owner()` ↔ `User::projects()`; `user_id` is cast to `int` so the
+  policy's strict comparison holds across database drivers.
+- New projects belong to their creator — `store()` creates through
+  `$request->user()->projects()->create(...)`, so `user_id` is never taken from
+  request input (CWE-915).
+- **Consistent rule (documented):** any authenticated user may list, view, and
+  create projects; only the **owner** may update or delete one. Viewing stays
+  open to authenticated users; editing/deleting is owner-only.
+- The seeder gives all six demo projects to Demo Owner, so the rule is visible
+  immediately.
+
+## ProjectPolicy behaviour
+
+`App\Policies\ProjectPolicy` (registered explicitly in `AppServiceProvider` and
+also discoverable by convention):
+
+| Ability | Rule |
+| ------- | ---- |
+| `viewAny` | any authenticated user |
+| `view` | any authenticated user |
+| `create` | any authenticated user |
+| `update` | owner only (`user.id === project.user_id`) |
+| `delete` | owner only |
+
+Enforced with a per-action `$this->authorize(...)` call in `ProjectController`.
+`authorizeResource()` is intentionally avoided: on Laravel 11+ it relies on a
+controller `middleware()` instance method that no longer exists. Blade gates the
+Edit/Delete buttons with `@can`, so a non-owner never sees a broken button;
+direct URL access by a non-owner returns a styled **403** page.
+
+## issue_user migration & relationships
+
+- `2026_06_22_100008_create_issue_user_table` — pivot with `issue_id` +
+  `user_id` (both cascade on delete), `unique(issue_id, user_id)`, an index on
+  `user_id`, and no surrogate id/timestamps (mirrors `issue_tag`).
+- `Issue::assignees()` (belongsToMany User) ↔ `User::assignedIssues()`.
+
+## Issue assignment AJAX routes
+
+- `IssueUserController` — JSON `store`/`destroy`, idempotent
+  (`syncWithoutDetaching` / `detach`), owner-gated by `IssuePolicy::assign` (the
+  authenticated user must own the issue's project). Behind the `auth` group, so
+  guests get 401 and non-owners 403 — never publicly accessible.
+- Routes: `POST /issues/{issue}/users/{user}` (`issues.users.attach`),
+  `DELETE /issues/{issue}/users/{user}` (`issues.users.detach`).
+- JSON: `{ "assigned": true|false, "user": { "id", "name", "email" }, "message": … }`.
+- The issue detail page shows the assigned users (name + email) to everyone; the
+  project owner additionally gets an assign/unassign manager. `issue-show.js`
+  drives it over `fetch()` with the CSRF header, renders with `textContent`
+  (never `innerHTML`), disables buttons in flight, and shows inline errors — no
+  full-page reload, no `console.log`.
+- The seeder assigns ~60% of issues one to three random members (some have
+  several, some none).
+
+## Search implementation
+
+- `Issue::scopeSearch($term)` — `title`/`description` `LIKE` with the term bound,
+  not concatenated (CWE-89); null/empty is a no-op. The OR is grouped so it
+  composes as a single AND term with the status/priority/tag scopes.
+- `IssueController@index` threads the term through the scope chain, preserves all
+  filters across pagination (`withQueryString`), and on an XHR returns just the
+  `issues._results` partial.
+- `issues-index.js` — 300 ms debounce, `fetch()` the partial, swap via
+  `DOMParser` + `replaceChildren` (never `innerHTML`), loading + error states, a
+  clear button, AJAX pagination via event delegation, and `history.replaceState`
+  to keep the URL shareable. Progressive enhancement — the GET form still works
+  with JavaScript off.
+
+## DEMO_MODE login prefill
+
+`config('app.demo_mode')` reads `(bool) env('DEMO_MODE', false)`. When on, the
+login form prefills the Demo Owner email + password and shows the hint "Demo
+credentials are prefilled in demo mode." When off, the fields are empty and no
+credentials are exposed. It **never auto-logs-in** — the reviewer still clicks
+Sign in. `.env.example` ships `DEMO_MODE=false`; `app:install` enables it for
+the local demo.
+
+## Self-provisioning setup (for a non-developer reviewer)
+
+- `php artisan app:install` (also `composer setup`) creates `.env`, generates
+  the app key, creates the SQLite file, migrates + seeds, and enables demo mode.
+  Idempotent; `--fresh` drops and reseeds.
+- `AppServiceProvider` auto-provisions the database (migrate + seed) on the first
+  web request **in demo mode**, so even a bare `php artisan serve` self-heals a
+  missing/empty database. Guarded to web requests + demo mode + file SQLite — it
+  never runs in an artisan command, a test, or a real deployment.
+- `composer start` runs install + serve in one command.
+
+Reviewer flow: `composer install` → `composer setup` → `php artisan serve` (or
+just `composer start`), then sign in with the prefilled credentials.
+
+## Tests run
+
+`php artisan test` → **127 passed (340 assertions)**, ~2s. (104 from the prior
+checkpoints plus the bonus suites.) `vendor/bin/pint --test` → **passed**.
+
+New / updated suites:
+- `Tests\Feature\Auth\AuthenticationTest` — login page, owner/member login,
+  logout, invalid login stays a guest, enumeration-safe message, prefill on/off.
+- `Tests\Feature\Projects\ProjectCrudTest` — rewritten for auth; 13 ownership
+  cases (guest gating, owner can edit/update/delete, non-owner 403, hidden
+  buttons, owner shown on the list).
+- `Tests\Feature\Issues\IssueUserApiTest` — pivot exists, both relations,
+  detail-page render, assign JSON, idempotent duplicate, unassign,
+  missing-unassign no-crash, guest 401, non-owner 403, seeded assignees.
+- `Tests\Feature\Issues\IssueSearchTest` — title, description, exclusion, combine
+  with each filter and all together, empty-returns-all, XHR-returns-partial,
+  pagination preserves the query.
+- The existing Issue/Tag/Comment HTTP suites now authenticate (every application
+  route sits behind `auth`).
+
+## Playwright MCP verification (real browser, dev server)
+
+All flows passed against `php artisan serve`, **0 console errors** on every
+normal page:
+
+- Login form is prefilled in demo mode; Sign in → redirect to `/projects`; all
+  six demo projects render with the **Owner** column.
+- As Demo Owner the project rows show **View / Edit / Delete**.
+- Issue detail: the assignment manager assigns "Backend Developer" via AJAX (it
+  moves to *Assigned*, the button becomes *Unassign*, no reload), then unassigns
+  it back — `POST` and `DELETE …/users/…` both return 200, console clean.
+- Issues index: typing "Throttle" debounces and swaps the results in place (URL
+  → `?search=Throttle`, no reload); adding `status=closed` narrows to the single
+  match; the **Clear** button empties the search and the full list returns.
+- As Demo Member (non-owner): the project rows show **only View** (no Edit /
+  Delete); visiting `/projects/1/edit` directly returns the styled **403** page.
+
+## API / HTTP verification (curl against the dev server)
+
+| Request | Result |
+| ------- | ------ |
+| `GET /login` | 200; demo email + hint prefilled; CSP present; `X-Powered-By` suppressed |
+| `GET /` · `GET /projects` · `GET /issues` (guest) | 302 → `/login` |
+| `POST /login` (CSRF + session) | 302 → `/projects` |
+| `GET /projects` (auth) | 200; owner column shown |
+| `GET /issues?search=login` (XHR) | 200; results partial only (no layout) |
+| `POST /issues/{issue}/users/{user}` (owner) | 200 `{ "assigned": true, "user": {…} }` |
+| `DELETE /issues/{issue}/users/{user}` (owner) | 200 `{ "assigned": false, … }` |
+| `DELETE /projects/{id}` (non-owner) | 403 |
+| `POST /issues/{issue}/users/{user}` (non-owner) | 403 |
+| `DELETE /projects/{id}` (owner) | 302 |
+
+## Known limitations (by design for this checkpoint)
+
+- **Authorization scope.** Only project edit/delete and issue assignment are
+  owner-gated. Any authenticated user can still create/edit/delete issues, tags,
+  and comments — issue/tag ownership was out of scope. Comment `author_name` is
+  still a free field, not bound to the signed-in user.
+- A directly-requested 403 URL logs one benign "Failed to load resource: 403" in
+  the browser console — the browser reporting the document's own 403 status
+  (inherent to any 403 navigation), not a CSP or script error. The UI never
+  links a non-owner there; the buttons are hidden.
+- `DEMO_MODE` prefills the password into the HTML for one-click review. This is
+  intentional for a demo only and must stay `false` in production.
+- `app:install` enables demo mode for whoever installs (this is an
+  assignment/demo app); a real deployment sets `DEMO_MODE=false`.
+- The AJAX endpoints remain on `web` routes (session + CSRF), not a versioned
+  `/api`, and have no rate limiting beyond the login throttle.
+- Sessions, cache, and the queue use the SQLite database; no Redis or queue
+  worker is run.
+
+## Final checkpoint notes
+
+The application now satisfies the assignment's required core **and** all of its
+bonus features — multi-user assignment, authorization with policies, and search
+— plus a non-developer-friendly setup. Possible follow-ups: bind comment authors
+to the signed-in user, add issue/tag ownership, numbered pagination, a versioned
+`/api/v1` with rate limiting, and password-reset / MFA flows.

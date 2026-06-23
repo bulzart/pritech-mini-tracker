@@ -14,6 +14,15 @@ schema, Eloquent models and relationships, demo data, and:
   full-page reload.
 - **AJAX comments** — paginated loading and creation on the issue detail page,
   with inline validation; new comments are prepended without a reload.
+- **Authentication** — session login/logout with seeded demo users; the login
+  form is prefilled in demo mode for one-click review.
+- **Project ownership** — projects belong to a user; only the owner can edit or
+  delete a project, enforced by a policy (`@can`-gated buttons + a 403 on direct
+  access).
+- **User assignment** — assign multiple members to an issue (a second
+  `issue_user` pivot), attach/detach over AJAX on the issue detail page.
+- **Issue search** — debounced AJAX search across title and description that
+  combines with the status / priority / tag filters and preserves pagination.
 
 The front end is progressive-enhancement JavaScript (no SPA framework) over
 server-rendered Blade. See [`CHECKPOINT.md`](CHECKPOINT.md) for the detailed
@@ -42,34 +51,45 @@ comments and pivot rows; deleting a tag removes its pivot rows.
 | Node.js  | optional     | only for the Vite asset pipeline (not required — see below) |
 
 > **Front-end assets:** the UI is styled by a self-contained static stylesheet
-> at `public/css/app.css` and a small script at `public/js/app.js`. No `npm`
+> at `public/css/app.css` and small scripts under `public/js/` (delete-confirm,
+> the AJAX tag / comment / assignment managers, and debounced search). No `npm`
 > build step is required to run or demo the app. (The default Vite/Tailwind
 > pipeline ships with Laravel but is not used by these views.)
 
-## Setup
+## Quick start
+
+For a reviewer — three commands, then sign in with the prefilled demo
+credentials:
 
 ```bash
-# 1. Install PHP dependencies
-composer install
-
-# 2. Create your environment file
-cp .env.example .env
-
-# 3. Generate the application key
-php artisan key:generate
-
-# 4. Create the SQLite database file (skip if it already exists)
-touch database/database.sqlite
-
-# 5. Run migrations and seed demo data
-php artisan migrate:fresh --seed
+composer install      # install PHP dependencies
+composer setup        # = php artisan app:install: creates .env + app key, the
+                      #   SQLite database, seeds demo data, and enables demo mode
+php artisan serve     # open the printed URL — http://127.0.0.1:8000
 ```
 
-## Run
+Or, after `composer install`, do setup and serve in one command:
 
 ```bash
-php artisan serve
-# then open http://127.0.0.1:8000  (redirects to /projects)
+composer start        # runs app:install, then php artisan serve
+```
+
+On the login page the **Demo Owner** credentials are prefilled in demo mode —
+just click **Sign in**. Demo accounts (every password is `password`):
+`owner@example.com` (owns the demo projects), `member@example.com`,
+`qa@example.com`, `frontend@example.com`, `backend@example.com`.
+
+> In demo mode the app self-heals: the first request after `php artisan serve`
+> creates and seeds the database automatically if it is missing, so there is no
+> separate migrate/seed step.
+
+### Manual setup (equivalent, for development)
+
+```bash
+cp .env.example .env
+php artisan key:generate
+php artisan migrate:fresh --seed
+php artisan serve   # then open http://127.0.0.1:8000 (redirects to /projects)
 ```
 
 ## Test
@@ -78,9 +98,10 @@ php artisan serve
 php artisan test
 ```
 
-The suite uses an in-memory SQLite database (configured in `phpunit.xml`) and
-covers the data layer (relationships, cascades, uniqueness, scopes, casts) and
-the Project HTTP layer (routing, validation, CRUD).
+**127 tests** use an in-memory SQLite database (configured in `phpunit.xml`) and
+cover the data layer (relationships, cascades, uniqueness, scopes, casts) and
+the HTTP layer (authentication, project ownership + policy, issue / tag /
+comment CRUD, filters, AJAX tag / assignment / comments, and search).
 
 ## Code style
 
