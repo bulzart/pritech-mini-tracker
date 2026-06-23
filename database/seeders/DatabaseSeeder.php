@@ -33,6 +33,7 @@ final class DatabaseSeeder extends Seeder
         // to be assigned to issues.
         $users = $this->seedUsers();
         $owner = $users['owner'];
+        $members = $users['members'];
 
         $tags = $this->seedTags();
 
@@ -51,11 +52,20 @@ final class DatabaseSeeder extends Seeder
                 ->count(fake()->numberBetween(7, 10))
                 ->for($project)
                 ->create()
-                ->each(function (Issue $issue) use ($tags, &$firstIssueSeeded): void {
+                ->each(function (Issue $issue) use ($tags, $members, &$firstIssueSeeded): void {
                     // Each issue carries a small, random subset of the shared tags.
                     $issue->tags()->attach(
                         $tags->random(fake()->numberBetween(1, 4))->pluck('id')->all(),
                     );
+
+                    // ~60% of issues get one to three assignees; the rest have
+                    // none — so some issues have multiple assignees and some have
+                    // none, like real data.
+                    if (fake()->boolean(60)) {
+                        $issue->assignees()->attach(
+                            $members->random(fake()->numberBetween(1, 3))->pluck('id')->all(),
+                        );
+                    }
 
                     $commentCount = $firstIssueSeeded
                         ? fake()->numberBetween(3, 6)

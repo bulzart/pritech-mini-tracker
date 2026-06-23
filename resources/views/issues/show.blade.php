@@ -83,6 +83,52 @@
         </div>
     </section>
 
+    {{-- Assigned users: assign/unassign via AJAX (issue-show.js). The controls
+         are shown only to the owner of the issue's project; everyone else sees a
+         read-only list of the assigned users. --}}
+    <section class="card" aria-labelledby="assignees-heading">
+        <h2 id="assignees-heading">Assigned users</h2>
+
+        @if ($canAssign)
+            <p class="field-error" data-assignee-error role="alert" hidden></p>
+
+            <div class="tag-manager" data-assignee-manager>
+                <div class="tag-manager__col">
+                    <h3 class="tag-manager__title">Assigned</h3>
+                    <ul class="tag-manager__list" data-assigned-list aria-live="polite">
+                        @forelse ($issue->assignees as $user)
+                            @include('issues._assignee_item', ['issue' => $issue, 'user' => $user, 'action' => 'detach'])
+                        @empty
+                            <li class="muted" data-empty>No users assigned.</li>
+                        @endforelse
+                    </ul>
+                </div>
+
+                <div class="tag-manager__col">
+                    <h3 class="tag-manager__title">Available</h3>
+                    <ul class="tag-manager__list" data-available-users-list aria-live="polite">
+                        @forelse ($availableUsers as $user)
+                            @include('issues._assignee_item', ['issue' => $issue, 'user' => $user, 'action' => 'assign'])
+                        @empty
+                            <li class="muted" data-empty>All users are assigned.</li>
+                        @endforelse
+                    </ul>
+                </div>
+            </div>
+        @else
+            <ul class="assignee-list" aria-live="polite">
+                @forelse ($issue->assignees as $user)
+                    <li class="assignee">
+                        <span class="assignee__name">{{ $user->name }}</span>
+                        <span class="assignee__email muted">{{ $user->email }}</span>
+                    </li>
+                @empty
+                    <li class="muted">No users assigned.</li>
+                @endforelse
+            </ul>
+        @endif
+    </section>
+
     {{-- Comments: loaded and submitted via AJAX (app.js). --}}
     <section class="card" aria-labelledby="comments-heading"
              data-comments-section

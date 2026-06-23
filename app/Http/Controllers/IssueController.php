@@ -9,6 +9,7 @@ use App\Http\Requests\UpdateIssueRequest;
 use App\Models\Issue;
 use App\Models\Project;
 use App\Models\Tag;
+use App\Models\User;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -76,9 +77,9 @@ final class IssueController extends Controller
      * Issue detail. project and tags are eager-loaded; comments are loaded
      * separately through the paginated AJAX endpoint, not here.
      */
-    public function show(Issue $issue): View
+    public function show(Request $request, Issue $issue): View
     {
-        $issue->load(['project', 'tags']);
+        $issue->load(['project', 'tags', 'assignees']);
 
         // Tags not yet attached, offered for AJAX attach.
         $availableTags = Tag::query()
@@ -86,9 +87,18 @@ final class IssueController extends Controller
             ->orderBy('name')
             ->get();
 
+        // Users not yet assigned, offered for AJAX assignment. Only the owner of
+        // the issue's project (canAssign) sees the assign/unassign controls.
+        $availableUsers = User::query()
+            ->whereNotIn('id', $issue->assignees->pluck('id'))
+            ->orderBy('name')
+            ->get();
+
         return view('issues.show', [
             'issue' => $issue,
             'availableTags' => $availableTags,
+            'availableUsers' => $availableUsers,
+            'canAssign' => $request->user()->can('assign', $issue),
         ]);
     }
 

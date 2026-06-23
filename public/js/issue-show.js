@@ -1,10 +1,11 @@
 /*
  * Mini Issue Tracker — issue detail page interactions.
  *
- * Loaded only on the issue show page. Provides two AJAX features with no full
+ * Loaded only on the issue show page. Provides three AJAX features with no full
  * page reload:
  *   1. Attach / detach tags (POST / DELETE /issues/{issue}/tags/{tag}).
- *   2. Paginated comments thread + comment creation
+ *   2. Assign / unassign users (POST / DELETE /issues/{issue}/users/{user}).
+ *   3. Paginated comments thread + comment creation
  *      (GET / POST /issues/{issue}/comments).
  *
  * CSP-safe: same-origin fetch (connect-src falls back to default-src 'self'),
@@ -177,6 +178,127 @@
                         removeEmptyPlaceholder(availableList);
                         availableList.appendChild(buildTagItem(tag, url, "attach"));
                         ensureEmptyPlaceholder(attachedList, "No tags attached.");
+                    }
+                })
+                .catch(function () {
+                    button.disabled = false;
+                    setText(errorRegion, "Network error. Please check your connection and try again.");
+                    show(errorRegion);
+                });
+        });
+    }
+
+    /* --------------------------------------------------------------------- *
+     * Assignees: assign / unassign users (owner only)
+     * --------------------------------------------------------------------- */
+
+    function initAssignees() {
+        var manager = document.querySelector("[data-assignee-manager]");
+        if (!manager) {
+            return;
+        }
+
+        var assignedList = manager.querySelector("[data-assigned-list]");
+        var availableList = manager.querySelector("[data-available-users-list]");
+        var errorRegion = document.querySelector("[data-assignee-error]");
+
+        function removeEmptyPlaceholder(list) {
+            var placeholder = list.querySelector("[data-empty]");
+            if (placeholder) {
+                placeholder.remove();
+            }
+        }
+
+        function ensureEmptyPlaceholder(list, text) {
+            if (list.querySelector(".tag-manager__item")) {
+                return;
+            }
+            if (list.querySelector("[data-empty]")) {
+                return;
+            }
+            var li = document.createElement("li");
+            li.className = "muted";
+            li.setAttribute("data-empty", "");
+            li.textContent = text;
+            list.appendChild(li);
+        }
+
+        function buildAssigneeItem(user, url, action) {
+            var li = document.createElement("li");
+            li.className = "tag-manager__item";
+            li.setAttribute("data-user-id", String(user.id));
+            li.setAttribute("data-user-name", user.name);
+            li.setAttribute("data-user-email", user.email);
+            li.setAttribute("data-assignee-url", url);
+
+            var person = document.createElement("span");
+            person.className = "assignee";
+
+            var name = document.createElement("span");
+            name.className = "assignee__name";
+            name.textContent = user.name;
+
+            var email = document.createElement("span");
+            email.className = "assignee__email muted";
+            email.textContent = user.email;
+
+            person.appendChild(name);
+            person.appendChild(email);
+
+            var button = document.createElement("button");
+            button.type = "button";
+            button.className = "button button--small tag-manager__action";
+            button.setAttribute("data-assignee-action", action);
+            button.textContent = action === "detach" ? "Unassign" : "Assign";
+
+            li.appendChild(person);
+            li.appendChild(button);
+
+            return li;
+        }
+
+        manager.addEventListener("click", function (event) {
+            var button = event.target.closest("[data-assignee-action]");
+            if (!button) {
+                return;
+            }
+
+            var item = button.closest(".tag-manager__item");
+            if (!item) {
+                return;
+            }
+
+            var action = button.getAttribute("data-assignee-action");
+            var url = item.getAttribute("data-assignee-url");
+            var user = {
+                id: parseInt(item.getAttribute("data-user-id"), 10),
+                name: item.getAttribute("data-user-name"),
+                email: item.getAttribute("data-user-email")
+            };
+            var method = action === "detach" ? "DELETE" : "POST";
+
+            hide(errorRegion);
+            button.disabled = true;
+
+            jsonFetch(url, method)
+                .then(function (result) {
+                    if (!result.ok) {
+                        button.disabled = false;
+                        setText(errorRegion, "Could not update assignments. Please try again.");
+                        show(errorRegion);
+                        return;
+                    }
+
+                    item.remove();
+
+                    if (action === "assign") {
+                        removeEmptyPlaceholder(assignedList);
+                        assignedList.appendChild(buildAssigneeItem(user, url, "detach"));
+                        ensureEmptyPlaceholder(availableList, "All users are assigned.");
+                    } else {
+                        removeEmptyPlaceholder(availableList);
+                        availableList.appendChild(buildAssigneeItem(user, url, "assign"));
+                        ensureEmptyPlaceholder(assignedList, "No users assigned.");
                     }
                 })
                 .catch(function () {
@@ -421,6 +543,7 @@
 
     document.addEventListener("DOMContentLoaded", function () {
         initTags();
+        initAssignees();
         initComments();
     });
 })();

@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Models\Issue;
 use App\Models\Project;
+use App\Policies\IssuePolicy;
 use App\Policies\ProjectPolicy;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Gate;
@@ -22,8 +24,9 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         // Explicit policy registration (in addition to Laravel's auto-discovery)
-        // so the Project authorization rules are unambiguous and greppable.
+        // so the authorization rules are unambiguous and greppable.
         Gate::policy(Project::class, ProjectPolicy::class);
+        Gate::policy(Issue::class, IssuePolicy::class);
 
         $this->ensureDemoDatabaseIsReady();
     }

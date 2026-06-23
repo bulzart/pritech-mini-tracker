@@ -6,6 +6,7 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\IssueCommentController;
 use App\Http\Controllers\IssueController;
 use App\Http\Controllers\IssueTagController;
+use App\Http\Controllers\IssueUserController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\TagController;
 use Illuminate\Support\Facades\Route;
@@ -29,7 +30,7 @@ Route::middleware('auth')->group(function (): void {
     Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
 
     // Full CRUD for projects. Owner-only edit/delete is enforced by
-    // ProjectPolicy via authorizeResource() in the controller.
+    // ProjectPolicy via per-action $this->authorize() in the controller.
     Route::resource('projects', ProjectController::class);
 
     // Full CRUD for issues. Filtering (status/priority/tag) and text search are
@@ -48,6 +49,13 @@ Route::middleware('auth')->group(function (): void {
         ->name('issues.tags.attach');
     Route::delete('issues/{issue}/tags/{tag}', [IssueTagController::class, 'destroy'])
         ->name('issues.tags.detach');
+
+    // User assignment attach/detach (idempotent). Only the owner of the issue's
+    // project may manage assignments (IssuePolicy::assign).
+    Route::post('issues/{issue}/users/{user}', [IssueUserController::class, 'store'])
+        ->name('issues.users.attach');
+    Route::delete('issues/{issue}/users/{user}', [IssueUserController::class, 'destroy'])
+        ->name('issues.users.detach');
 
     // Paginated comments list + comment creation.
     Route::get('issues/{issue}/comments', [IssueCommentController::class, 'index'])
