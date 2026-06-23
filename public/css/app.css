@@ -508,6 +508,15 @@ textarea.form__control {
     color: var(--color-text);
 }
 
+/* Error pages (403/404/419/429/500/503) — large status code above the heading. */
+.error-code {
+    font-size: 3rem;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--color-muted);
+    margin: 0 0 0.25rem;
+}
+
 /* Pagination */
 .pagination {
     display: flex;
