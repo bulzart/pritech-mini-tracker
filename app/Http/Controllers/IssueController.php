@@ -13,6 +13,7 @@ use App\Models\User;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 
 final class IssueController extends Controller
 {
@@ -23,31 +24,46 @@ final class IssueController extends Controller
     private const int PER_PAGE = 15;
 
     /**
-     * Filterable, paginated list of issues. The status/priority/tag scopes
-     * each treat null/empty input as a no-op, so an absent or invalid filter
-     * never breaks the query. project and tags are eager-loaded to keep the
-     * Blade loop free of N+1 queries.
+     * Searchable, filterable, paginated list of issues. The search/status/
+     * priority/tag scopes each treat null/empty input as a no-op, so an absent
+     * term or filter never breaks the query. project and tags are eager-loaded
+     * to keep the Blade loop free of N+1 queries. An XHR gets just the results
+     * partial for in-place swap; a normal request gets the full page.
      */
-    public function index(Request $request): View
+    public function index(Request $request): View|Response
     {
+        $filters = [
+            'search' => $request->string('search')->toString(),
+            'status' => $request->string('status')->toString(),
+            'priority' => $request->string('priority')->toString(),
+            'tag' => $request->string('tag')->toString(),
+        ];
+
         $issues = Issue::query()
             ->with(['project', 'tags'])
-            ->status($request->string('status')->toString())
-            ->priority($request->string('priority')->toString())
-            ->tag($request->string('tag')->toString())
+            ->search($filters['search'])
+            ->status($filters['status'])
+            ->priority($filters['priority'])
+            ->tag($filters['tag'])
             ->latest()
             ->paginate(self::PER_PAGE)
             ->withQueryString();
+
+        // The debounced search/filter fetches over XHR and swaps only the
+        // results region; a normal request renders the full page (progressive
+        // enhancement — the GET form still works with JavaScript disabled).
+        if ($request->ajax()) {
+            return response()->view('issues._results', [
+                'issues' => $issues,
+                'filters' => $filters,
+            ]);
+        }
 
         return view('issues.index', [
             'issues' => $issues,
             'projects' => Project::query()->orderBy('name')->get(),
             'tags' => Tag::query()->orderBy('name')->get(),
-            'filters' => [
-                'status' => $request->string('status')->toString(),
-                'priority' => $request->string('priority')->toString(),
-                'tag' => $request->string('tag')->toString(),
-            ],
+            'filters' => $filters,
         ]);
     }
 

@@ -563,6 +563,36 @@ textarea.form__control {
     color: var(--color-muted);
 }
 
+/* Search field (debounced AJAX search) spans wider than the filter selects. */
+.filters__group--search {
+    flex: 2 1 16rem;
+}
+
+.filters__search {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.filters__search .form__control {
+    flex: 1 1 auto;
+}
+
+/* AJAX search status line + dimmed results while a request is in flight. */
+.issues-status {
+    color: var(--color-muted);
+    font-size: 0.9rem;
+    margin: 0 0 1rem;
+}
+
+.issues-status--error {
+    color: var(--color-error-text);
+}
+
+[data-issues-results][aria-busy="true"] {
+    opacity: 0.6;
+}
+
 .filters__actions {
     display: flex;
     gap: 0.5rem;
